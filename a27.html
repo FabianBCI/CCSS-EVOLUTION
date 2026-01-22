@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CCSS Evolution - Tablet & Web</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React y Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Iconos Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Importación de Manrope */
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap');
+        
+        body { 
+            font-family: 'Manrope', sans-serif; 
+            font-weight: 500; /* Manrope Medium */
+            margin: 0; 
+            padding: 0; 
+            overflow-x: hidden; 
+            background-color: #f8fafc; 
+            color: #1e293b; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        /* Animaciones */
+        @keyframes cardDrop {
+            0% { opacity: 0; transform: translateY(-30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-drop { animation: cardDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; opacity: 0; }
+        
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* Animación para barras de progreso */
+        @keyframes growBar {
+            from { width: 0%; }
+            to { width: var(--target-width); }
+        }
+        .animate-grow { animation: growBar 1.5s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .ipad-frame {
+            box-shadow: 
+                0 0 0 2px #1e293b,
+                0 40px 100px -20px rgba(0,0,0,0.5),
+                0 0 0 12px #0f172a;
+        }
+
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;  
+            overflow: hidden;
+        }
+
+        .catalyst-orb {
+            position: fixed;
+            z-index: 9999;
+            cursor: grab;
+            touch-action: none;
+            transition: transform 0.2s ease;
+        }
+        .catalyst-orb:active { cursor: grabbing; transform: scale(0.9); }
+
+        /* Power Button Styling */
+        .power-btn-hardware {
+            position: absolute;
+            right: -3px;
+            top: 100px;
+            width: 4px;
+            height: 60px;
+            background: #1e293b;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            z-index: 100;
+            transition: background 0.3s;
+        }
+        .power-btn-hardware:hover { background: #334155; }
+        .power-btn-hardware:active { transform: translateX(-1px); }
+
+        /* Timeline Arrow Styles */
+        .timeline-arrow {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 12px solid #cbd5e1;
+            z-index: 5;
+        }
+        .timeline-line-gradient {
+            background: linear-gradient(to bottom, #1d4ed8 0%, #3b82f6 50%, #94a3b8 100%);
+        }
+    </style>
+</head>
+<body class="bg-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => { 
+                if (window.lucide) window.lucide.createIcons(); 
+            }, [name]);
+            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+        };
+
+        const BciLogoSVG = ({ size = 250, color = "#1d4ed8" }) => (
+            <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="48" stroke={color} strokeWidth="0.5" opacity="0.4"/>
+                <path d="M20 52C28 42 45 42 55 52C65 62 82 62 90 52" stroke={color} strokeWidth="8" strokeLinecap="round"/>
+                <path d="M15 42C23 32 40 32 50 42C60 52 77 52 85 42" stroke={color} strokeWidth="5" strokeLinecap="round" opacity="0.6"/>
+            </svg>
+        );
+
+        // --- DATA ESTRATÉGICA ---
+
+        const PILLARS_DATA = [
+            { 
+                id: 'exp', 
+                n: 'Experiencia', 
+                icon: 'target', 
+                t: '85% SNEX', 
+                info: 'Proactividad y entrega de valor al cliente.',
+                deep: 'Transformar nuestras interacciones en momentos memorables, utilizando la IA como gran movilizador, apalancados en la Resolución Integral (FCR) e iniciativas que eliminan fricciones del proceso.',
+                bullets: ['Meta SNEX E2E: 85%.', 'Meta FCR: 90%.', 'Eliminar fricciones del proceso.', 'IA habilitadora de experiencia WOW.'],
+                strategy: 'IA como gran movilizador y Resolución Integral (FCR).',
+                strategicFocus: 'Centrado en el Cliente / Digital First'
+            },
+            { 
+                id: 'efi', 
+                n: 'Eficiencia', 
+                icon: 'zap', 
+                t: '70% Auto', 
+                info: 'Productividad y resolución efectiva.',
+                deep: 'Garantizar la Productividad y Resolución Efectiva a través de la Optimización Operacional (Deflexión Digital) y el logro de la Eficiencia Organizacional (Rediseño de Roles).',
+                bullets: ['Automatización TRX: 70%.', 'Costo Interacción: $1.100.', 'Reducción del 60% en costos.', 'Rediseño de Roles Operativos.'],
+                strategy: 'Optimización Operacional y Rediseño de Roles.',
+                strategicFocus: 'Excelencia Operacional y Automatización'
+            },
+            { 
+                id: 'ing', 
+                n: 'Ingresos', 
+                icon: 'trending-up', 
+                t: '$1 Billón', 
+                info: 'Monetización y valor comercial.',
+                deep: 'Monetizar y entregar Valor Comercial a través de la Captura Proactiva de Oportunidades (Inbound/Outbound) impulsada por el análisis de datos y el modelo Next Best Action.',
+                bullets: ['Meta Ventas: $1 Billón (1.6x).', 'Captura Planes: 30M (3.3x).', 'Modelos Predictivos (NBA).', 'Maximización del LTV.'],
+                strategy: 'Captura proactiva impulsada por análisis de datos.',
+                strategicFocus: 'Monetización y Crecimiento Sostenible'
+            },
+            { 
+                id: 'tal', 
+                n: 'Talento', 
+                icon: 'users', 
+                t: '95% Eng', 
+                info: 'Talento diferenciador.',
+                deep: 'Garantizar el Talento Diferenciador mediante el Upskilling y Reskilling de roles para transformar a los ejecutivos en Asesores de alto valor, impulsando su Engagement.',
+                bullets: ['Meta Engagement: 95%.', 'Meta Rotación: 6%.', 'Asesores de alto valor experto.', 'Cultura de adopción tecnológica.'],
+                strategy: 'Upskilling y Reskilling de roles estratégicos.',
+                strategicFocus: 'Cultura de Innovación y Empoderamiento'
+            }
+        ];
+
+        const STAR_CONTENT = {
+            'S': {
+                title: 'Situación',
+                icon: 'alert-circle',
+                subtitle: 'El Escenario actual',
+                deep: 'Operamos en un entorno donde el cliente no compara nuestro servicio con el de otro banco, sino con la experiencia de Amazon o Uber.',
+                bullets: [
+                    'Ventas actuales en $580 MMM, con margen de mejora en venta proactiva y S2S.', 
+                    'Presión de costos operativos significativa.', 
+                    'Talento enfocado en tareas transaccionales.',
+                    'Costo por interacción $2,5 k, con grandes posibilidades de reducción -60%.'
+                ],
+                footer: 'Ecosistema atencional con potencial de una evolución disruptiva.'
+            },
+            'T': {
+                title: 'Tarea',
+                icon: 'target',
+                subtitle: 'El Desafío Estratégico',
+                deep: 'Nuestra misión es una transformación estratégica para 2026/2028, buscando resultados optimos en experiencia, eficiencia, productividad y resolutividad',
+                bullets: [
+                    'Migrar hacia un modelo Digital First.', 
+                    'Contact Center como eje de autovalor.', 
+                    'Resolutividad en el 1er contacto.',
+                    'Apalancar en IA la automatización de lo transaccional.',
+                    'Potenciar el talento humano para lo complejo y emocional.'
+                ],
+                footer: 'Necesidad de evolucionar hacia un Contact Center World Class.'
+            },
+            'A': {
+                title: 'Acción',
+                icon: 'zap',
+                subtitle: 'El Plan Maestro',
+                deep: 'Despliegue de una sinergia transformadora, donde el potencial de la IA, el talento humano y la excelencia operativa, se fusionan para redefinir la experiencia de los clientes en nuestro canal.',
+                bullets: [
+                    'Automatización del 70% de transacciones.', 
+                    'Rediseño de modelo operativo.', 
+                    'Full Roll Out de Genesys Cloud e implementación de agentes cognitivos y copilots.'
+                ],
+                footer: 'Superpoderes Tecnologicos para un modelo operativo y atencional disruptivo'
+            },
+            'R': {
+                title: 'Resultado',
+                icon: 'award',
+                subtitle: 'La Cosecha del éxito',
+                deep: 'Operación inteligente: Talento liberado para alcanzar metas de alto impacto.',
+                bullets: [
+                    'Reducción del costo por interacción -60% (Valor final $1,1 k)', 
+                    'Crecimiento comercial de 1.6x.', 
+                    'Engagement superior al 92%.'
+                ],
+                footer: 'Éxito: Transformación consolidada.'
+            }
+        };
+
+        const INICIATIVAS_DATA = [
+            { id: 1, nombre: "Kyros - Coe IA", impacto: "Inbound Digital personas", desc: "Bots de cara a Cliente que se despliega en Whatsapp. Aplicación In house COE IA.", implementacion: "Oct 2025 - Mar 2026", icon: "zap", estado: "Planificado", mes_inicio: "Octubre" },
+            { id: 2, nombre: "Apolo Chat / Voz - Coe IA", impacto: "Inbound Personas y Digital personas", desc: "Asistente para el ejecutivo basado en inteligencia artificial que apoya a los agentes en tiempo real base de conocimiento robusta.", implementacion: "Jul 2025 - Dic 2025", icon: "activity", estado: "En curso", mes_inicio: "Julio" },
+            { id: 3, nombre: "Bot soporte salesforce y asistencia comercial - Salesforce", impacto: "Inbound Digital interno", desc: "Migración de la carga de trabajo de un equipo hacia una solución de asistencia automatizada en Salesforce.", implementacion: "Q1 2026 - Q2 2026", icon: "cpu", estado: "Futuro", mes_inicio: "Enero" },
+            { id: 4, nombre: "AgentForce - Salesforce", impacto: "Inbound Digital personas", desc: "Asistente de cara al cliente, puede mantener conversaciones fluidas, entender la intención y resolver gestiones completas.", implementacion: "Ene 2026 - Ago 2026", icon: "bot", estado: "Futuro", mes_inicio: "Febrero" },
+            { id: 5, nombre: "Asistencia Preferencial Whatsapp - Salesforce", impacto: "Inbound Digital personas", desc: "Asistencia preferencial en ecosistema WhatsApp, funcional para clientes que no pueden contactar a su ejecutivo.", implementacion: "Q2 2025 - Q3 2025", icon: "message-square", estado: "En curso", mes_inicio: "Mayo" },
+            { id: 6, nombre: "Predictive routing - Genesys", impacto: "Inbound Personas y pyme", desc: "Distribución inteligente de interacciones al mejor asesor de servicios", implementacion: "Q3 2025 - Q4 2025", icon: "shuffle", estado: "En curso", mes_inicio: "Agosto" },
+            { id: 7, nombre: "Supervisor copilot - Genesys", impacto: "Inbound Personas y pyme", desc: "Mejorar herramienta de evaluación mediante IA entregando feedback oportuno.", implementacion: "Q4 2025 - Q1 2026", icon: "user-check", estado: "Planificado", mes_inicio: "Noviembre" },
+            { id: 8, nombre: "Agent Copilot - Genesys", impacto: "Inbound Personas y pyme", desc: "Asistente para el ejecutivo basado en IA que apoya a los agentes en tiempo real.", implementacion: "Q4 2025 - Q1 2026", icon: "headphones", estado: "Planificado", mes_inicio: "Diciembre" },
+            { id: 9, nombre: "IVR Deflection", impacto: "Inbound Personas y pyme", desc: "Disminuir interacciones telefónicas, pasando de voz a texto (Whatsapp).", implementacion: "Q2 2025 - Q4 2025", icon: "phone-forwarded", estado: "En curso", mes_inicio: "Abril" },
+            { id: 10, nombre: "Cuenta Digital - Cambio de Canal personas y pyme", impacto: "Inbound Personas y pyme", desc: "Optimización del Customer Journey moviendo el tráfico de voz a otro canal más eficiente.", implementacion: "Q3 2025 - Q1 2026", icon: "arrow-right-left", estado: "En curso", mes_inicio: "Septiembre" },
+            { id: 11, nombre: "Mesa Central - Decomisar 7000", impacto: "Inbound Personas y pyme", desc: "Bloqueo definitivo del acceso telefónico histórico al número 7000 eliminando fricciones.", implementacion: "Q3 2025 - Q4 2025", icon: "trash-2", estado: "En curso", mes_inicio: "Agosto" },
+            { id: 12, nombre: "Implementación de BPO (Business Process Outsourcing)", impacto: "Inbound y Outbound Persona y Pyme", desc: "Externalización estratégica de la operación para ganar escalabilidad.", implementacion: "Q2 2025 - Q4 2025", icon: "users", estado: "En curso", mes_inicio: "Marzo" },
+            { id: 13, nombre: "Mejorar Contactabilidad", impacto: "Outbound Persona y Pyme", desc: "Inteligencia aplicada a la gestión de bases para maximizar ventas.", implementacion: "Q1 2026 - Q4 2026", icon: "trending-up", estado: "Futuro", mes_inicio: "Marzo" },
+            { id: 14, nombre: "CRM Único", impacto: "CCSS", desc: "Centralizar toda la información y gestión de clientes en un solo sistema.", implementacion: "Q4 2025", icon: "database", estado: "Planificado", mes_inicio: "Octubre" },
+            { id: 15, nombre: "Plan desarrollo de talento", impacto: "CCSS", desc: "Redefinición de roles y perfiles logrando el upskilling y reskilling.", implementacion: "Continuo 2025 - 2027", icon: "award", estado: "En curso", mes_inicio: "Febrero" },
+            { id: 16, nombre: "Incentivos y gamificación", impacto: "CCSS", desc: "Nuevo modelo de ventas corporativo", implementacion: "Q2 2026 - Q4 2026", icon: "star", estado: "Futuro", mes_inicio: "Junio" },
+            { id: 17, nombre: "Super perfil CCSS", impacto: "CCSS", desc: "Nueva matriz de competencias robusteciendo atribuciones.", implementacion: "Q2 2025 - Q3 2025", icon: "shield-check", estado: "En curso", mes_inicio: "Marzo" },
+            { id: 18, nombre: "Reestructuración CCSS", impacto: "CCSS", desc: "Rediseñar equipos enfocándose en tareas de alto valor y complejidad.", implementacion: "Q2 2025 - Q4 2025", icon: "layers", estado: "En curso", mes_inicio: "Junio" }
+        ];
+
+        // --- COMPONENTES ---
+
+        const KpiCard = ({ label, current, target, unit = "%", isCurrency = false, invert = false }) => {
+            const calculateProgress = () => {
+                if (invert) return 100 - ((current - 1100) / (2500 - 1100) * 100);
+                return (current / target) * 100;
+            };
+            const progress = calculateProgress();
+            return (
+                <div className="bg-white border border-slate-100 p-3 rounded-2xl shadow-sm flex flex-col justify-between h-24 transition-all hover:shadow-md group">
+                    <div className="flex justify-between items-center mb-1">
+                        <p className="text-[9px] font-bold uppercase text-slate-400 tracking-wider leading-none">{label}</p>
+                        <span className="text-[8px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded leading-none italic">Meta: {isCurrency ? '$' : ''}{target}{unit}</span>
+                    </div>
+                    <div className="flex items-baseline space-x-1">
+                        <p className="text-2xl font-bold text-slate-900 leading-none">{isCurrency ? '$' : ''}{current}{unit}</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase italic leading-none">Hoy</p>
+                    </div>
+                    <div className="mt-2 space-y-1">
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden relative">
+                            <div className={`h-full ${invert ? 'bg-green-500' : 'bg-blue-600'} rounded-full animate-grow`} style={{ '--target-width': `${progress}%` }}></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const FloatingBciCatalyst = () => {
+            const [pos, setPos] = useState({ x: window.innerWidth > 800 ? window.innerWidth - 120 : 20, y: window.innerHeight - 150 });
+            const [isOpen, setIsOpen] = useState(false);
+            const [isDragging, setIsDragging] = useState(false);
+            const [isTyping, setIsTyping] = useState(false);
+            const [messages, setMessages] = useState([
+                { id: 1, text: "Hola, soy Bci Catalyst. ¿En qué puedo ayudarte hoy?", sender: 'bot' }
+            ]);
+            const [input, setInput] = useState('');
+            const dragStart = useRef({ x: 0, y: 0 });
+            const chatEndRef = useRef(null);
+
+            useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [messages, isTyping]);
+
+            const onStart = (e) => {
+                const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                dragStart.current = { x: clientX - pos.x, y: clientY - pos.y };
+                setIsDragging(true);
+            };
+
+            const onMove = (e) => {
+                if (!isDragging) return;
+                const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                setPos({ x: clientX - dragStart.current.x, y: clientY - dragStart.current.y });
+            };
+
+            const onEnd = () => setIsDragging(false);
+
+            useEffect(() => {
+                if (isDragging) {
+                    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onEnd);
+                    window.addEventListener('touchmove', onMove); window.addEventListener('touchend', onEnd);
+                }
+                return () => {
+                    window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onEnd);
+                    window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd);
+                };
+            }, [isDragging]);
+
+            const handleSend = (e) => {
+                e.preventDefault();
+                const val = input.trim();
+                if (!val) return;
+                setMessages(prev => [...prev, { id: Date.now(), text: val, sender: 'user' }]);
+                setInput('');
+                setIsTyping(true);
+                setTimeout(() => {
+                    setIsTyping(false);
+                    setMessages(prev => [...prev, { id: Date.now() + 1, text: "Entiendo. Estamos transformando el CCSS para ser de clase mundial.", sender: 'bot' }]);
+                }, 1000);
+            };
+
+            return (
+                <div className="catalyst-orb" style={{ left: pos.x, top: pos.y }} onMouseDown={onStart} onTouchStart={onStart}>
+                    <button onClick={() => !isDragging && setIsOpen(!isOpen)} className="w-16 h-16 bg-blue-700 rounded-full shadow-2xl flex items-center justify-center text-white border-4 border-white ring-4 ring-blue-50 transition-all active:scale-95">
+                        <Icon name="zap" size={32} />
+                    </button>
+                    {isOpen && (
+                        <div className="absolute bottom-20 right-0 w-80 h-[28rem] bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-in slide-up origin-bottom-right z-[9998]">
+                            <div className="bg-slate-900 p-5 text-white flex justify-between items-center">
+                                <div className="flex items-center space-x-2"><div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div><span className="font-bold text-[12px] uppercase tracking-widest italic">Catalyst AI</span></div>
+                                <button onClick={() => setIsOpen(false)}><Icon name="x" size={18} /></button>
+                            </div>
+                            <div className="flex-1 p-5 overflow-y-auto custom-scroll space-y-4 bg-slate-50 text-[11px]">
+                                {messages.map(m => (
+                                    <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`p-3.5 rounded-2xl max-w-[90%] shadow-sm ${m.sender === 'user' ? 'bg-blue-700 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'}`}>{m.text}</div>
+                                    </div>
+                                ))}
+                                {isTyping && <div className="flex justify-start"><div className="bg-white border p-3 rounded-2xl flex space-x-1"><div className="w-1 h-1 bg-slate-300 rounded-full animate-bounce"></div><div className="w-1 h-1 bg-slate-300 rounded-full animate-bounce" style={{animationDelay:'0.2s'}}></div></div></div>}
+                                <div ref={chatEndRef} />
+                            </div>
+                            <form onSubmit={handleSend} className="p-4 bg-white border-t flex space-x-2">
+                                <input value={input} onChange={e => setInput(e.target.value)} type="text" placeholder="Habla con Catalyst..." className="flex-1 bg-slate-100 rounded-2xl px-5 py-3 text-xs outline-none font-bold" />
+                                <button type="submit" className="bg-blue-700 p-3 rounded-2xl text-white shadow-lg"><Icon name="send" size={16} /></button>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [viewMode, setViewMode] = useState('tablet'); 
+            const [screen, setScreen] = useState('home');
+            const [selectedPillar, setSelectedPillar] = useState(null);
+            const [selectedStar, setSelectedStar] = useState(null);
+            const [activeIni, setActiveIni] = useState(null);
+            const [isLeadersOpen, setIsLeadersOpen] = useState(false);
+            const [time, setTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            const [powerState, setPowerState] = useState('off');
+
+            useEffect(() => {
+                const timer = setInterval(() => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })), 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            const handlePowerOn = () => {
+                if (powerState === 'off') setPowerState('intro');
+                else if (powerState === 'on') { setPowerState('off'); setScreen('home'); }
+            };
+
+            const renderHome = () => (
+                <div className="flex flex-col h-full bg-white overflow-y-auto custom-scroll p-4 md:p-6 pt-10 space-y-6 pb-40">
+                    <header className="flex flex-col items-center text-center pb-2 border-b border-slate-100 shrink-0">
+                        <div className="inline-block">
+                            <h1 className="text-3xl md:text-4xl font-medium leading-none tracking-tighter text-center italic whitespace-nowrap">
+                                <span className="text-slate-900 uppercase">CCSS</span> <span className="text-blue-700 italic tracking-[0.2em]">Evolution</span>
+                            </h1>
+                            <p className="text-blue-700 font-bold uppercase text-[9px] md:text-[10px] mt-1.5 text-center tracking-wider leading-none whitespace-nowrap">
+                                Proyecto Transformación Centro de Servicios
+                            </p>
+                        </div>
+                    </header>
+
+                    <div className="space-y-4">
+                        <div className="border-l-8 border-slate-900 pl-4"><h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter italic leading-none">Estrategia STAR</h3></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
+                            {Object.entries(STAR_CONTENT).map(([key, data]) => (
+                                <button key={key} onClick={() => { setSelectedStar(data); setScreen('starDetail'); }} className="bg-white p-4 rounded-[2rem] border-l-8 border-blue-700 text-left shadow-md flex items-center space-x-5 min-h-[100px] transition-all hover:shadow-xl active:scale-95">
+                                    <div className="flex flex-col items-center justify-center shrink-0 w-16 h-16 bg-blue-50 rounded-2xl border-2 border-blue-100"><Icon name={data.icon} size={24} className="text-blue-700" /><span className="text-xl font-black text-blue-800">{key}</span></div>
+                                    <div className="flex-1 overflow-hidden"><h4 className="text-lg font-bold uppercase text-slate-900 truncate">{data.title}</h4><p className="text-[12px] text-slate-500 font-medium italic line-clamp-2">"{data.subtitle}"</p></div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="border-l-8 border-blue-700 pl-4"><h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter italic leading-none">Indicadores Clave (KPIs)</h3></div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
+                            <KpiCard label="SNEX" current={56} target={85} unit="%" />
+                            <KpiCard label="FCR" current={70} target={90} unit="%" />
+                            <KpiCard label="Autogestión" current={20} target={70} unit="%" />
+                            <KpiCard label="Costo Int." current={2500} target={1100} unit="" isCurrency={true} invert={true} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-end px-1">
+                            <div className="border-l-8 border-blue-700 pl-4 text-left">
+                                <h3 className="text-xl font-bold text-slate-800 uppercase tracking-tighter italic leading-none">Pilares de Ejecución</h3>
+                            </div>
+                            <button onClick={() => setIsLeadersOpen(!isLeadersOpen)} className="bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-lg flex items-center space-x-2 transition-all active:scale-95">
+                                <Icon name="users" size={16} /><span>Líderes</span>
+                            </button>
+                        </div>
+
+                        {isLeadersOpen && (
+                            <div className="animate-in fade-in slide-up p-5 bg-slate-50 rounded-[2.2rem] border border-slate-200">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {[
+                                        { n: "Daniel PEREZ", r: "Gerente del CCSS" },
+                                        { n: "FELIPE OLARRA", r: "Subgerente de Transformación" },
+                                        { n: "fabian cabezas", r: "Coordinador de la Transformación del CCSS" },
+                                        { n: "cristian vejar", r: "Jefe de Proyectos" }
+                                    ].map((l, i) => (
+                                        <div key={i} className="flex flex-col bg-slate-900 p-3 rounded-xl shadow-sm border-l-4 border-blue-600">
+                                            <span className="text-sm font-bold text-white uppercase italic truncate leading-none">{l.n}</span>
+                                            <p className="text-[10px] font-medium text-blue-400 uppercase mt-1.5 leading-tight">{l.r}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div className="grid grid-cols-2 gap-4 pb-12">
+                            {PILLARS_DATA.map((p, idx) => (
+                                <button key={idx} onClick={() => { setSelectedPillar(p); setScreen('detail'); }} 
+                                    className="bg-white p-5 rounded-[2rem] shadow-md border border-slate-100 flex flex-col justify-between min-h-[110px] text-left transition-all hover:shadow-xl active:scale-95">
+                                    <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-slate-50 border border-slate-100"><Icon name={p.icon} className="text-blue-700" size={18} /></div>
+                                    <div className="mt-3">
+                                        <h4 className="text-lg font-bold text-slate-900 uppercase italic leading-none truncate">{p.n}</h4>
+                                        <div className="bg-blue-700 text-white inline-block px-2.5 py-0.5 rounded-lg text-[9px] font-bold mt-1.5 italic">{p.t}</div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderIniciativas = () => {
+                const groups = [
+                    { 
+                        title: "Automatización - IA", 
+                        impact: "Experiencia - Eficiencia",
+                        icon: "zap", 
+                        ids: [1, 2, 3, 4, 6, 7, 8, 14] 
+                    },
+                    { 
+                        title: "Estructura - Gestión Personas", 
+                        impact: "Talento",
+                        icon: "users", 
+                        ids: [15, 16, 17, 18, 12] 
+                    },
+                    { 
+                        title: "Modelo Atencional", 
+                        impact: "Experiencia - Eficiencia",
+                        icon: "layout", 
+                        ids: [9, 10, 11, 5, 14] 
+                    },
+                    { 
+                        title: "Monetización", 
+                        impact: "Ingresos",
+                        icon: "trending-up", 
+                        ids: [13] 
+                    }
+                ];
+
+                return (
+                    <div className="p-4 md:p-10 pt-24 bg-white h-full overflow-y-auto custom-scroll animate-in fade-in pb-40">
+                        <header className="mb-12 border-b border-slate-100 pb-6">
+                            <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter italic leading-none">Portafolio de Iniciativas</h2>
+                            <p className="text-blue-700 font-bold uppercase text-[10px] tracking-[0.3em] mt-2 italic">Proyectos de Transformación CCSS</p>
+                        </header>
+                        
+                        <div className="space-y-16">
+                            {groups.map((group, gIdx) => (
+                                <div key={gIdx} className="space-y-6">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between border-l-4 border-blue-700 pl-4 space-y-2 md:space-y-0">
+                                        <div className="flex items-center space-x-3">
+                                            <Icon name={group.icon} className="text-blue-700" size={20} />
+                                            <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tight leading-none">{group.title}</h3>
+                                        </div>
+                                        <div className="flex items-center space-x-2 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">
+                                            <span className="text-[10px] font-black uppercase text-blue-400">Impacta en:</span>
+                                            <span className="text-[11px] font-black uppercase text-blue-700 italic tracking-wider">{group.impact}</span>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {group.ids.map((id, idx) => {
+                                            const ini = INICIATIVAS_DATA.find(i => i.id === id);
+                                            // Usamos key con idx para casos donde el mismo ID se repite en grupos distintos (como CRM Único)
+                                            return (
+                                                <button key={`${group.title}-${id}-${idx}`} onClick={() => setActiveIni(ini)} className="bg-slate-50 border border-slate-100 p-5 rounded-[2rem] shadow-sm hover:shadow-xl hover:bg-white transition-all group flex items-center text-left overflow-hidden w-full h-24">
+                                                    <div className="w-12 h-12 bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform shrink-0">
+                                                        <Icon name={ini.icon} size={22} />
+                                                    </div>
+                                                    <div className="ml-5 flex-1 min-w-0">
+                                                        <h4 className="text-sm font-black text-slate-900 uppercase italic tracking-tight leading-tight mb-1">{ini.nombre}</h4>
+                                                        <p className="text-[9px] font-black text-blue-700 uppercase tracking-widest truncate italic opacity-70">{ini.impacto}</p>
+                                                    </div>
+                                                    <Icon name="chevron-right" size={16} className="text-slate-300 group-hover:text-blue-700 ml-2" />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderRoadmap = () => {
+                const roadmapPhases = [
+                    {
+                        year: "2025",
+                        phases: [
+                            { monthRange: "Marzo - Junio", q: "H1", title: "Cimientos & Modelos", items: [15, 12, 17, 9] },
+                            { monthRange: "Julio - Septiembre", q: "Q3", title: "Optimización & Digital", items: [2, 5, 11, 18, 6] },
+                            { monthRange: "Octubre - Diciembre", q: "Q4", title: "Consolidación CRM & IA", items: [14, 1, 10, 7, 8] }
+                        ]
+                    },
+                    {
+                        year: "2026",
+                        phases: [
+                            { monthRange: "Enero - Junio", q: "H1", title: "Automatización Autónoma", items: [3, 4, 13] },
+                            { monthRange: "Julio - Diciembre", q: "H2", title: "Monetización & Valor", items: [16] }
+                        ]
+                    }
+                ];
+
+                return (
+                    <div className="p-4 md:p-10 pt-24 bg-white h-full overflow-y-auto custom-scroll animate-in fade-in pb-40">
+                        <header className="mb-16 border-b-4 border-blue-700 pb-6 inline-block">
+                            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tighter italic uppercase leading-none">Roadmap Estratégico</h2>
+                        </header>
+                        
+                        <div className="relative max-w-4xl mx-auto pl-4 md:pl-20">
+                            <div className="absolute left-6 md:left-[5.5rem] top-0 bottom-0 w-1.5 timeline-line-gradient rounded-full -z-10"></div>
+                            
+                            <div className="space-y-24">
+                                {roadmapPhases.map((yearGroup, yIdx) => (
+                                    <div key={yIdx} className="relative">
+                                        <div className="absolute -left-12 md:-left-24 top-0 z-10">
+                                            <div className="bg-slate-900 text-white w-24 h-24 rounded-[2rem] flex flex-col items-center justify-center shadow-2xl border-4 border-white transform hover:scale-110 transition-transform">
+                                                <span className="text-[10px] font-black uppercase opacity-60">Año</span>
+                                                <span className="text-3xl font-black italic">{yearGroup.year}</span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-20 pt-28">
+                                            {yearGroup.phases.map((phase, pIdx) => (
+                                                <div key={pIdx} className="relative">
+                                                    <div className="timeline-arrow" style={{ top: '-40px' }}></div>
+                                                    <div className="flex flex-col md:flex-row md:items-start gap-8">
+                                                        <div className="shrink-0 w-32 pt-2">
+                                                            <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-center shadow-sm border border-blue-100">{phase.monthRange}</div>
+                                                            <p className="text-[14px] font-black text-slate-900 mt-2 uppercase italic text-center md:text-right">{phase.q}</p>
+                                                        </div>
+                                                        <div className="flex-1 space-y-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-3 h-3 rounded-full bg-blue-700 shadow-[0_0_10px_rgba(29,78,216,0.5)]"></div>
+                                                                <h3 className="text-xl font-black text-slate-400 uppercase tracking-widest italic">{phase.title}</h3>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 gap-3">
+                                                                {phase.items.map(id => {
+                                                                    const ini = INICIATIVAS_DATA.find(i => i.id === id);
+                                                                    return (
+                                                                        <button key={id} onClick={() => setActiveIni(ini)} className="w-full flex items-center space-x-5 bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:translate-x-2 transition-all text-left group relative overflow-hidden">
+                                                                            <div className={`absolute top-0 left-0 w-1.5 h-full ${ini.estado === 'En curso' ? 'bg-green-500' : 'bg-blue-700'}`}></div>
+                                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${ini.estado === 'En curso' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-700'}`}><Icon name={ini.icon} size={20} /></div>
+                                                                            <div className="flex-1 overflow-hidden">
+                                                                                <p className="text-md font-bold text-slate-900 uppercase italic truncate leading-none mb-1">{ini.nombre}</p>
+                                                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{ini.impacto}</span>
+                                                                            </div>
+                                                                            <Icon name="arrow-right" size={16} className="text-slate-200 group-hover:text-blue-700 transition-colors" />
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderStarDetail = () => (
+                <div className="h-full bg-white animate-in slide-up overflow-y-auto custom-scroll relative z-[100] p-8 pt-20 pb-40">
+                    <button onClick={() => setScreen('home')} className="absolute top-8 left-8 bg-slate-100 p-4 rounded-2xl text-blue-700 font-bold text-xs uppercase flex items-center space-x-2 transition-all hover:bg-slate-200 z-[110]"><Icon name="arrow-left" size={20} /><span>Volver al inicio</span></button>
+                    <div className="max-w-4xl mx-auto space-y-10 text-center">
+                        <div className="w-24 h-24 bg-blue-700 text-white rounded-3xl flex items-center justify-center shadow-2xl mx-auto font-black text-5xl shrink-0">{selectedStar.title.charAt(0)}</div>
+                        <div className="space-y-4"><h2 className="text-5xl md:text-6xl font-bold text-slate-900 uppercase tracking-tighter italic leading-none">{selectedStar.title}</h2><p className="text-blue-700 font-bold uppercase text-lg md:text-xl tracking-widest">{selectedStar.subtitle}</p></div>
+                        <p className="text-2xl md:text-3xl text-slate-700 leading-relaxed font-semibold italic max-w-3xl mx-auto">"{selectedStar.deep}"</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left pt-6 pb-10">
+                            <div className="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl space-y-6">
+                                <h4 className="font-bold uppercase italic text-sm text-blue-400 tracking-widest">Estado Actual</h4>
+                                <ul className="space-y-4">
+                                    {selectedStar.bullets.map((p, i) => (
+                                        <li key={i} className="flex items-start space-x-4">
+                                            <Icon name="check-circle" size={22} className="text-blue-500 mt-1 shrink-0" />
+                                            <span className="text-lg md:text-xl font-medium opacity-90 leading-snug">{p}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div className="bg-blue-700 p-10 rounded-[3rem] text-white shadow-2xl flex flex-col justify-center text-center space-y-4">
+                                <h4 className="font-bold uppercase text-sm tracking-widest opacity-70">Enfoque Proyectado</h4>
+                                <p className="text-3xl md:text-4xl font-black italic leading-tight tracking-tight">{selectedStar.footer}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderDetail = () => (
+                <div className="h-full bg-white animate-in slide-up overflow-y-auto custom-scroll relative z-[100] p-8 pt-20 pb-40">
+                    <button onClick={() => setScreen('home')} className="absolute top-8 left-8 bg-slate-100 p-4 rounded-2xl text-blue-700 font-bold text-xs uppercase flex items-center space-x-2 transition-all hover:bg-slate-200 z-[110]"><Icon name="arrow-left" size={20} /><span>Volver al inicio</span></button>
+                    <div className="max-w-5xl mx-auto space-y-10 text-center">
+                        <div className="w-24 h-24 bg-slate-50 rounded-3xl flex items-center justify-center shadow-2xl mx-auto border border-slate-100 shrink-0"><Icon name={selectedPillar.icon} size={48} className="text-blue-700" /></div>
+                        <div className="space-y-4"><h2 className="text-5xl md:text-6xl font-bold text-slate-900 uppercase tracking-tighter italic leading-none">{selectedPillar.n}</h2><p className="font-bold text-blue-700 text-3xl md:text-4xl uppercase italic leading-none">{selectedPillar.t}</p></div>
+                        <p className="text-2xl md:text-3xl text-slate-700 leading-relaxed font-semibold italic max-w-4xl mx-auto">"{selectedPillar.deep}"</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left pt-8 pb-10">
+                            <div className="bg-slate-50 p-10 rounded-[3rem] border border-slate-100 shadow-inner flex flex-col justify-center space-y-4"><div className="flex items-center space-x-3 mb-2"><Icon name="lightbulb" size={24} className="text-blue-700" /><h4 className="font-black uppercase text-blue-700 text-xs tracking-widest">Foco Estratégico</h4></div><p className="text-2xl font-bold uppercase text-slate-800 leading-tight">{selectedPillar.strategicFocus}</p><p className="text-lg md:text-xl text-slate-500 italic font-medium pt-2">"{selectedPillar.info}"</p></div>
+                            <div className="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl space-y-6"><div className="flex items-center space-x-3 mb-2"><Icon name="target" size={24} className="text-blue-400" /><h4 className="font-black uppercase text-blue-400 text-xs tracking-widest">Resultados Clave (KRs)</h4></div><ul className="space-y-4">{selectedPillar.bullets.map((bullet, idx) => (<li key={idx} className="flex items-start space-x-4 text-lg md:text-xl font-medium opacity-90 leading-snug"><Icon name="check-circle" size={22} className="text-blue-500 mt-1 shrink-0" /><span>{bullet}</span></li>))}</ul></div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderNavigation = () => {
+                const navItems = [ { id: 'home', icon: 'home', label: 'Inicio' }, { id: 'iniciativas', icon: 'layers', label: 'Iniciativas' }, { id: 'roadmap', icon: 'bar-chart-3', label: 'Plan' } ];
+                if (viewMode === 'tablet') {
+                    return (
+                        <nav className="bg-white/95 border-t px-16 py-3 flex justify-around items-center absolute bottom-0 w-full z-[200] rounded-b-[4.5rem] backdrop-blur-md shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.1)] shrink-0">
+                            {navItems.map(item => (
+                                <button key={item.id} onClick={() => { setScreen(item.id); setSelectedStar(null); setSelectedPillar(null); }} className={`flex flex-col items-center space-y-1 transition-all ${screen === item.id && !selectedStar && !selectedPillar ? 'text-blue-700 scale-105' : 'text-slate-400 hover:text-blue-500'}`}><Icon name={item.icon} size={22} /><span className="text-[10px] font-bold uppercase tracking-widest italic">{item.label}</span></button>
+                            ))}
+                        </nav>
+                    );
+                }
+                return (
+                    <aside className="w-80 bg-slate-900 text-white flex flex-col p-12 space-y-16 h-screen sticky top-0 shadow-2xl shrink-0">
+                        <div className="text-center italic"><h2 className="text-3xl font-bold uppercase tracking-tighter leading-none">CCSS <br/><span className="text-blue-500 italic">Evolution</span></h2></div>
+                        <div className="flex-1 space-y-8 overflow-y-auto custom-scroll">
+                            {navItems.map(item => (
+                                <button key={item.id} onClick={() => { setScreen(item.id); setSelectedStar(null); setSelectedPillar(null); }} className={`w-full flex items-center space-x-6 p-6 rounded-[2.5rem] transition-all ${screen === item.id && !selectedStar && !selectedPillar ? 'bg-blue-700 text-white shadow-xl scale-105' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><Icon name={item.icon} size={28} /><span className="font-bold text-lg uppercase italic tracking-tighter leading-none">{item.label}</span></button>
+                            ))}
+                        </div>
+                    </aside>
+                );
+            };
+
+            return (
+                <div className="min-h-screen relative transition-all duration-700 bg-white overflow-hidden flex flex-col items-center justify-center">
+                    <FloatingBciCatalyst />
+                    
+                    {activeIni && (
+                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                            <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in slide-up flex flex-col relative">
+                                <button onClick={() => setActiveIni(null)} className="absolute top-6 right-6 z-10 bg-white/80 p-2 rounded-full shadow-lg hover:bg-white transition-colors"><Icon name="x" size={20} /></button>
+                                <div className="h-64 w-full relative bg-blue-900 flex items-center justify-center overflow-hidden">
+                                    <div className="absolute inset-0 opacity-20 flex items-center justify-center"><BciLogoSVG size={500} color="#ffffff" /></div>
+                                    <div className="relative z-10 flex flex-col items-center text-white text-center space-y-4"><div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-3xl flex items-center justify-center border border-white/20 shadow-2xl"><Icon name={activeIni.icon} size={40} /></div><p className="text-sm font-black uppercase tracking-widest opacity-80 italic">Visualización del Proyecto</p></div>
+                                </div>
+                                <div className="p-10 space-y-6">
+                                    <div><h3 className="text-3xl font-black text-slate-900 uppercase italic tracking-tighter leading-none mb-2">{activeIni.nombre}</h3><p className="text-blue-700 font-bold uppercase text-[10px] tracking-[0.3em] italic">{activeIni.impacto}</p></div>
+                                    <p className="text-slate-600 text-lg font-medium leading-relaxed italic">"{activeIni.desc}"</p>
+                                    <div className="flex items-center justify-between pt-6 border-t border-slate-100">
+                                        <div className="flex items-center space-x-3"><div className="bg-slate-100 p-3 rounded-2xl text-slate-400"><Icon name="calendar" size={20} /></div><div><p className="text-[10px] font-black uppercase text-slate-400 leading-none mb-1">Implementación</p><p className="text-lg font-bold text-slate-900 italic leading-none">{activeIni.implementacion}</p></div></div>
+                                        <button onClick={() => setActiveIni(null)} className="bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold uppercase text-xs shadow-xl active:scale-95 transition-all">Cerrar Detalle</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="fixed top-6 right-6 z-[300] flex space-x-4 bg-white/95 backdrop-blur-md p-2 rounded-2xl shadow-xl border border-slate-200 scale-90">
+                        <button onClick={() => setViewMode('tablet')} className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all font-bold text-xs ${viewMode === 'tablet' ? 'bg-blue-700 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}><Icon name="tablet" size={16} /><span>TABLET</span></button>
+                        <button onClick={() => setViewMode('web')} className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all font-bold text-xs ${viewMode === 'web' ? 'bg-blue-700 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}><Icon name="monitor" size={16} /><span>WEB</span></button>
+                    </div>
+
+                    {viewMode === 'tablet' ? (
+                        <div className="device-container overflow-hidden w-full flex justify-center min-h-screen py-10">
+                            <div className="relative scale-[0.88] md:scale-95 origin-center transition-all">
+                                <div onClick={handlePowerOn} className="power-btn-hardware"></div>
+                                <div className="relative w-[820px] h-[1000px] bg-slate-900 rounded-[4.5rem] p-5 ipad-frame overflow-hidden ring-2 ring-slate-800 mx-auto">
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-800 rounded-full mt-6 z-50 shadow-inner"></div>
+                                    <div className="w-full h-full bg-white rounded-[3.5rem] overflow-hidden relative flex flex-col shadow-inner border border-slate-100">
+                                        {powerState === 'off' && (<div className="absolute inset-0 bg-black z-[500] flex flex-col items-center justify-center cursor-default text-white"><div className="w-20 h-20 rounded-full border-2 border-slate-200 flex items-center justify-center mb-8"><Icon name="power" size={40} /></div><p className="font-bold text-[14px] uppercase tracking-widest text-center opacity-80">Presione botón lateral para iniciar</p></div>)}
+                                        {powerState === 'intro' && (<div onClick={() => setPowerState('logo')} className="absolute inset-0 bg-slate-900 z-[501] flex items-center justify-center p-24 text-center text-white cursor-pointer animate-in fade-in"><h2 className="text-5xl md:text-6xl font-medium italic tracking-tighter">¿Se imaginan un Centro de Servicios de clase mundial?</h2></div>)}
+                                        {powerState === 'logo' && (<div onClick={() => setPowerState('on')} className="absolute inset-0 bg-white z-[502] flex flex-col items-center justify-center p-20 text-center animate-in fade-in cursor-pointer"><h1 className="text-5xl md:text-6xl font-medium tracking-tighter italic whitespace-nowrap"><span className="text-slate-900 uppercase">CCSS</span> <span className="text-blue-700 italic tracking-[0.2em]">Evolution</span></h1><p className="text-blue-700 font-bold uppercase text-sm mt-8 border-t-4 border-blue-100 pt-8">Proyecto Transformación Centro de Servicios</p></div>)}
+                                        <div className={`absolute top-0 w-full px-16 py-8 flex justify-between items-center z-40 text-[12px] font-bold ${powerState !== 'on' ? 'text-transparent' : 'text-slate-900/40'}`}><span className="tracking-tighter">{time}</span><div className="flex items-center space-x-5"><Icon name="wifi" size={16} /><Icon name="battery" size={16} /></div></div>
+                                        <div className="flex-1 overflow-hidden relative">
+                                            {powerState === 'on' && (
+                                                <React.Fragment>
+                                                    {screen === 'home' && renderHome()}
+                                                    {screen === 'iniciativas' && renderIniciativas()}
+                                                    {screen === 'roadmap' && renderRoadmap()}
+                                                    {screen === 'starDetail' && renderStarDetail()}
+                                                    {screen === 'detail' && renderDetail()}
+                                                </React.Fragment>
+                                            )}
+                                        </div>
+                                        {powerState === 'on' && renderNavigation()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex w-full h-screen bg-white relative">
+                            {powerState === 'on' && (
+                                <React.Fragment>
+                                    {renderNavigation()}
+                                    <main className="flex-1 h-screen overflow-hidden bg-slate-50/40 relative">
+                                        <div className="absolute inset-0 overflow-y-auto custom-scroll">
+                                            <div className="max-w-6xl mx-auto min-h-full">
+                                                {screen === 'home' && renderHome()}
+                                                {screen === 'iniciativas' && renderIniciativas()}
+                                                {screen === 'roadmap' && renderRoadmap()}
+                                                {screen === 'starDetail' && renderStarDetail()}
+                                                {screen === 'detail' && renderDetail()}
+                                            </div>
+                                        </div>
+                                    </main>
+                                </React.Fragment>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
